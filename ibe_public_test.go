@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	bls "github.com/cloudflare/circl/ecc/bls12381"
 	"github.com/etclab/ibe"
 )
 
@@ -32,31 +31,23 @@ func TestDecrypt(t *testing.T) {
 	}
 }
 
-var blackholeSk *bls.G1
-
 func BenchmarkExtract(b *testing.B) {
 	pkg, _ := ibe.NewPrivateKeyGenerator()
 	id := []byte("test@example.com")
 	for i := 0; i < b.N; i++ {
-		idSk := pkg.Extract(id)
-		// Ensure compiler preserves call to pkg.Extract
-		blackholeSk = idSk
+		_ = pkg.Extract(id)
 	}
 }
-
-var blackholeCiphertext *ibe.Ciphertext
 
 func BenchmarkEncrypt(b *testing.B) {
 	_, pp := ibe.NewPrivateKeyGenerator()
 	id := []byte("test@example.com")
 	msg := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ012345")
-	for i := 0; i < b.N; i++ {
-		c, err := ibe.Encrypt(pp, id, msg)
+	for b.Loop() {
+		_, err := ibe.Encrypt(pp, id, msg)
 		if err != nil {
 			b.Fatalf("ibe.Encrypt failed: %v", err)
 		}
-		// Ensure compiler preserves call to pkg.Encrypt
-		blackholeCiphertext = c
 	}
 }
 
@@ -69,10 +60,12 @@ func BenchmarkDecrypt(b *testing.B) {
 	if err != nil {
 		b.Fatalf("ibe.Encrypt failed: %v", err)
 	}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		got := ibe.Decrypt(pp, c, idSk)
+		b.StopTimer()
 		if !bytes.Equal(msg, got) {
 			b.Fatalf("expected decrypted message to be %x, but got %x", msg, got)
 		}
+		b.StartTimer()
 	}
 }
